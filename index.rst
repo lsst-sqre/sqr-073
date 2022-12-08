@@ -300,6 +300,7 @@ Doing that work will also fix several other long-standing problems with Gafaelfa
 
 Successful responses should also include ``X-RateLimit-Limit``, ``X-RateLimit-Remaining``, and ``X-RateLimit-Reset`` headers.
 These have the same meanings as the headers without the leading ``X-`` specified in the Internet-Draft `draft-ietf-httpapi-ratelimit-headers <https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-ratelimit-headers>`__.
+(We will switch to the standardized headers when the standard is published.)
 This will require lifting headers from the auth subrequest response into the main response, which will require some NGINX work.
 
 Options considered
