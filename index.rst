@@ -49,7 +49,6 @@ In the initial implementation, we expect to have the following quota types:
 
 - Total CPU and memory available in the Notebook Aspect, including any additional pods created via services like Dask_.
 - API rate limits for all API services.
-  In some services, we will want a separate quota for expensive requests (async TAP jobs, for example) from cheap requests (informational queries about the status of a job).
 
 .. _Dask: https://www.dask.org/
 
@@ -58,6 +57,9 @@ We may want to only block creation of new notebook pods, or block all access to 
 We may want to do this only for specific groups, or for everyone using the Science Platform.
 
 Additional quota types we may want to add in the future:
+
+- Separate API quotas based on the type of request.
+  In some services, we will want a separate quota for expensive requests (async TAP jobs, for example) from cheap requests (informational queries about the status of a job).
 
 - Disk quotas: user home directories and, separately, group-owned project directories.
   We currently don't have a mechanism for handling group-owned directories.
