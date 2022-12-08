@@ -292,7 +292,7 @@ At the end of that window, their quota will reset and they'll get their full quo
 There are more complex algorithms that are better at smoothing out load (sliding window, for instance), but fixed window is easy to explain and reason about, is extremely fast and cheap to represent in Redis, and matches the way GitHub does rate limiting.
 
 If the user exceeds their rate limit, Gafaelfawr will reject all requests to that API with 429 error responses until the reset interval has passed.
-The 429 response will include a ``Retry-After`` header (see `Retry-After_`).
+The 429 response will include a ``Retry-After`` header (see `Retry-After`_).
 This will require understanding how to configure NGINX to pass the actual reply from the auth request subhandler back to the client, rather than turning all unexpected errors into 500 errors.
 Doing that work will also fix several other long-standing problems with Gafaelfawr.
 
