@@ -59,14 +59,14 @@ We may want to do this only for specific groups, or for everyone using the Scien
 Additional quota types we may want to add in the future:
 
 - Separate API quotas based on the type of request.
-  In some services, we will want a separate quota for expensive requests (async TAP jobs, for example) from cheap requests (informational queries about the status of a job).
+  In some services, we will want a separate quota for expensive requests (async TAP jobs, for example) versus cheap requests (informational queries about the status of a job).
 
 - Disk quotas: user home directories and, separately, group-owned project directories.
   We currently don't have a mechanism for handling group-owned directories.
 
 - Quotas on the size of user database tables.
 
-- TAP query quotas based on the effort required to process the quota (as opposed to API limits on the TAP service itself).
+- TAP query quotas based on the effort required to process the query (as opposed to API limits on the TAP service itself).
 
 This general framework is intended to support tracking other types of quotas, but only the first two types of quotas and the emergency API are discussed below.
 
@@ -120,11 +120,11 @@ The data structure for the quota information will look something like this:
 
 The ``default`` key establishes default quotas for every user.
 The ``groups`` key provides additional quotas to particular groups.
-These quotas are additive, so in the above case a user who is a member of the ``g_developers`` group would have a quota of 1000 for the ``datalinker`` service.
+These quotas are additive, so in the above case a user who is a member of the ``g_developers`` group would have a quota of 1000 queries per 15 minutes for the ``datalinker`` service.
 
 API quotas are in requests per fifteen minutes.
 This is an awkward interval, but (as discussed in :ref:`rate-limiting`) the interval is also the length of time that the user will be blocked from accessing the service.
-One minute seems to short, and one hour (used by GitHub) seems too long.
+One minute seems too short, and one hour (used by GitHub) seems too long.
 
 The keys under ``api`` are the names of the services, as configured in the Gafaelfawr auth URL for that service.
 Normally, this is set in the ``config`` section of the corresponding ``GafaelfawrIngress`` custom resource.
@@ -163,7 +163,7 @@ The value of the key will be a JSON document such as the following:
    }
 
 This mostly has the same structure as the configuration, but it overrides all quota information taken from the configuration, including additions from groups.
-So, for example, if the above override were in place, all users would have a quota of 10 for the datalinker API, including members of ``g_developers`` who normally get an extra 500.
+So, for example, if the above override were in place, all users would have a quota of 10 queries per 15 minutes for the datalinker API, including members of ``g_developers`` who normally get an extra 500 queries per 15 minutes.
 Members of the ``g_users`` group would only have a quota of 10 for the vo-cutouts API.
 
 There is an additional key here under notebook, ``spawn``, which is a boolean that controls whether affected users are allowed to spawn new notebooks at all.
@@ -198,7 +198,7 @@ Options considered
 ------------------
 
 The original plan had been to store quota information in the database and provide an API and eventually a UI for updating it.
-However, that adds a lot of complexity and additional design for not a lot of expected benefit, at least for now.
+However, that adds complexity and additional design for not much expected benefit, at least for now.
 Storing it in the configuration makes it harder to update quickly and makes updates more intrusive, but it's not obvious how frequently we will be updating quota grants.
 Using configuration is much simpler to implement, and we can always switch to a database later.
 
@@ -216,7 +216,7 @@ This in theory could be done via complicated rules in the ingress specifying how
 Alternately, we could assume that all ``GET`` requests are cheap and all requests with other verbs are expensive, but unfortunately IVOA standards require some expensive queries be accesible via ``GET``.
 
 The current approach is the simplest and provides a general facility to impose basic rate-limits on anything, so we're going to start with it and see if it's adequate in practice.
-If not, we may need to move more quota checking into the separate services rather than in Gafaelfawr.
+If not, we may need to move more quota checking from Gafaelfawr to the separate services.
 
 Quota checking
 ==============
@@ -277,7 +277,7 @@ Delegation will then be controlled by ``delegate_scopes``.
 
 Rate limiting will then be done if and only if there is an API quota for a service whose name matches the ``service`` parameter.
 
-To support multiple Gafaelfawr instances without confusing impact on quotas from having quotas be tracked separately by different instances, the data for quota enforcement will be stored in Redis.
+Since there may be multiple Gafaelfawr pods running, and rate limits shouldn't vary based on which pod a given request is assigned to, the data for quota enforcement will be stored in Redis rather than in memory in each pod.
 Gafaelfawr's current Redis is used to store tokens, which are valuable data that needs to be persisted to disk and backed up, and for which writes are relatively rare.
 The quota tracking data will require huge numbers of writes but is not valuable and does not need to be persisted.
 We will therefore stand up a second Redis instance for quota tracking that is in-memory only with no persistent storage.
@@ -335,7 +335,7 @@ This can be configured per-ingress with `annotations <https://kubernetes.github.
 Using this rate limiting would be the least effort for us.
 
 However, since NGINX has no access to the user's authentication information, it cannot do rate-limiting by user, only by IP address.
-Since we expect many requests to come from inside the cluster via other services such as the Portal or Notebook Aspect, this cannot be used for the type of rate limiting we want to do.
+Since we expect many requests to come from inside the cluster via other services such as the Portal or Notebook Aspect, and even requests from multiple users outside the cluster may appear to come from a single IP address due to NAT, this cannot be used for the type of rate limiting we want to do.
 We may use NGINX rate limiting for :ref:`dos-protection`.
 
 There are two basic ways to respond to a user hitting a rate limit: delay the request until the rate limit allows it, or reject the request.
@@ -366,7 +366,7 @@ Each request, even if rate-limited, requires processing by NGINX, an auth subreq
 This means NGINX and Gafaelfawr could still be overloaded by higher quantities of traffic, such as runaway processes in tight loops or an intentional denial of service attack.
 
 Fully defending against denial of service attacks is outside the scope of the Rubin Science Platform and not something we can reasonably expect to do.
-But we can apply sanity limits on requests at the NGINX level to protect against being overwhelmed by accidents external to the cluster.
+We can, however, apply sanity limits on requests at the NGINX level to protect against being overwhelmed by accidents external to the cluster.
 
 This can be done with `ingress-nginx annotations <https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#rate-limiting>`__, normally managed via ``GafaelfawrIngress``.
 This rate limiting can only be done by IP address, not by user.
