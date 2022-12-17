@@ -136,6 +136,7 @@ Quota overrides
 ---------------
 
 Emergency override information will be stored in the Gafaelfawr Redis under the key ``quota-override``.
+
 The value of the key will be a JSON document such as the following:
 
 .. code-block:: json
@@ -175,6 +176,20 @@ In this example, members of ``g_admins`` can use the services according to the n
 In the initial implementation, Gafaelfawr won't cache the quota override information and will try to retrieve it from Redis for every request potentially affected by quotas.
 We'll see if that creates a performance problem and add in-memory caching if it does.
 
+Quota override UI
+^^^^^^^^^^^^^^^^^
+
+This approach to quota overrides has a major drawback: the YAML in Phalanx is not the single source of truth for quota.
+One can see a quota configuration in Phalanx and expect it to be applied, but the cluster may be applying a different quota because an override exists.
+
+We considered instead storing the quota information only in Redis or only in the Phalanx configuration YAML (see :ref:`override-options`), but rejected those approaches for other reasons.
+
+Instead, to raise the visibility of a quota override, we plan to use Semaphore (see :sqr:`060`) plus Squareone_ to add user notifications if a quota override exists.
+This will make it obvious that special throttling rules are in place, and therefore the quotas found in Phalanx are not being applied verbatim.
+(Eventually we may add a link, visible only to admins, from the banner to a UI to change or delete the quota overrides.)
+
+.. _Squareone: https://github.com/lsst-sqre/squareone
+
 API
 ---
 
@@ -197,15 +212,33 @@ There will be three new Gafaelfawr APIs to get and set the quota overrides:
 Options considered
 ------------------
 
-The original plan had been to store quota information in the database and provide an API and eventually a UI for updating it.
-However, that adds complexity and additional design for not much expected benefit, at least for now.
-Storing it in the configuration makes it harder to update quickly and makes updates more intrusive, but it's not obvious how frequently we will be updating quota grants.
-Using configuration is much simpler to implement, and we can always switch to a database later.
+.. _override-options:
 
+Options for quota overrides
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The original plan had been to store quota information in the database and provide an API and eventually a UI for updating it.
+However, this is a bit awkward (and different than other Science Platform services) for bootstrapping.
+A newly-installed cluster, or one where Gafaelfawr's storage was reset for some reason, would have no quotas until they were added through an API or eventual UI.
+The quotas would also be invisible outside of the API or UI, unlike other deployment configuration, which is visible in Phalanx.
+
+Storing the configuration in YAML makes it much more visible and easier to edit in the normal case where no overrides are in place.
+It does make updates more intrusive, since they require a Gafaelfawr rolling restart, but we don't believe we'll be updating the base quotas frequently.
+The YAML configuration approach is also simpler and easier to implement.
+
+Given that decision, we had to decide how to handle overrides.
 The simplest approach would be to make everything configuration, but then, during an emergency, we would have to change the Gafaelfawr configuration and restart Gafaelfawr, which may be dangerous or undesirable under heavy load.
 Being able to selectively override the normal configuration in Redis allows us to provide an API to change this on the fly, requiring only that Gafaelfawr be responsive.
 
 Redis was chosen over the database as the place to store quota overrides, since Redis is much faster to query.
+
+This unfortunately means that in the (hopefully rare) case when special quota overrides are in place, the Phalanx configuration is deceptive and the quotas applied on the cluster don't match what's written in the configuration, even when the services show as up-to-date.
+This creates the risk of leaving overrides in place longer than intended, and of confusion and frustrated debugging.
+
+To address those concerns, we plan to tie quota overrides into a banner notification so that it will be obvious to anyone using the cluster that it is being temporarily throttled, and therefore the normal quota configuration may be overridden.
+
+Options for rate limits
+^^^^^^^^^^^^^^^^^^^^^^^
 
 The rate-limit configuration for APIs is unsatisfying in both syntax and in semantics.
 For syntax, ideally it would be specified as ``<count>/<time>`` so that both the number of requests and the time interval could be given.
