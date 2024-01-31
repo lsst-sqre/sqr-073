@@ -1,14 +1,15 @@
-:tocdepth: 1
+############################
+RSP quotas and rate limiting
+############################
 
-Abstract
-========
+.. abstract::
 
-The Rubin Science Platform is a shared computing environment and thus is vulnerable to resource starvation or excessive cost if one user (possibly accidentally) consumes too many resources.
-We therefore want to impose automatically-enforced limits on the resources available to a user.
-In some cases, these can be statically enforced or delegated to underlying infrastructure, such as resource limits for user notebooks.
-In other cases, such as API rate limits, they need to be dynamically calculated and imposed by Rubin code.
+   The Rubin Science Platform is a shared computing environment and thus is vulnerable to resource starvation or excessive cost if one user (possibly accidentally) consumes too many resources.
+   We therefore want to impose automatically-enforced limits on the resources available to a user.
+   In some cases, these can be statically enforced or delegated to underlying infrastructure, such as resource limits for user notebooks.
+   In other cases, such as API rate limits, they need to be dynamically calculated and imposed by Rubin code.
 
-This tech note discusses the requirements and possible implementation options and proposes an initial design.
+   This tech note discusses the requirements and possible implementation options and proposes an initial design.
 
 .. note::
 
@@ -60,12 +61,9 @@ Additional quota types we may want to add in the future:
 
 - Separate API quotas based on the type of request.
   In some services, we will want a separate quota for expensive requests (async TAP jobs, for example) versus cheap requests (informational queries about the status of a job).
-
 - Disk quotas: user home directories and, separately, group-owned project directories.
   We currently don't have a mechanism for handling group-owned directories.
-
 - Quotas on the size of user database tables.
-
 - TAP query quotas based on the effort required to process the query (as opposed to API limits on the TAP service itself).
 
 This general framework is intended to support tracking other types of quotas, but only the first two types of quotas and the emergency API are discussed below.

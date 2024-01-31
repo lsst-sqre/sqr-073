@@ -1,0 +1,20 @@
+[technote]
+id = "SQR-073"
+series_id = "SQR"
+canonical_url = "https://sqr-073.lsst.io/"
+github_url = "https://github.com/lsst-sqre/sqr-073"
+github_default_branch = "main"
+date_created = 2022-12-07
+date_updated = 2022-12-16
+organization.name = "Vera C. Rubin Observatory"
+organization.ror = "https://ror.org/048g3cy84"
+license.id = "CC-BY-4.0"
+
+[[technote.authors]]
+name = {given = "Russ", family = "Allbery"}
+internal_id = "allberyr"
+
+[[technote.authors.affiliations]]
+name = "Rubin Observatory Project Office"
+internal_id = "RubinObs"
+address = "950 N. Cherry Ave., Tucson, AZ 85719, USA"
