@@ -173,7 +173,7 @@ For example:
                    "vo-cutouts": 10
                }
            }
-       },
+       }
    }
 
 Unlike the way group quotas are handled, quota overrides are not additive.
@@ -251,7 +251,7 @@ The response looks like this:
           },
           "notebook": {
               "cpu": 9,
-              "memory": "27Gi"
+              "memory": 27
           }
       }
   }
